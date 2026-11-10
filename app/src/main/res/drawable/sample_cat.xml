@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="300dp"
+    android:height="300dp"
+    android:viewportWidth="300"
+    android:viewportHeight="300">
+
+    <!-- 배경 -->
+    <path
+        android:fillColor="#FFF3E0"
+        android:pathData="M0,0h300v300h-300z" />
+    <!-- 방석 -->
+    <path
+        android:fillColor="#F8BBD0"
+        android:pathData="M150,262m-125,0a125,26 0,1 1,250 0a125,26 0,1 1,-250 0" />
+
+    <!-- 꼬리 -->
+    <path
+        android:strokeColor="#F4A259"
+        android:strokeWidth="16"
+        android:strokeLineCap="round"
+        android:pathData="M232,240Q275,215 258,170" />
+
+    <!-- 몸통 (뚱뚱하게) -->
+    <path
+        android:fillColor="#F4A259"
+        android:pathData="M150,190m-100,0a100,72 0,1 1,200 0a100,72 0,1 1,-200 0" />
+    <path
+        android:fillColor="#FFE0B2"
+        android:pathData="M150,205m-55,0a55,48 0,1 1,110 0a55,48 0,1 1,-110 0" />
+
+    <!-- 귀 -->
+    <path
+        android:fillColor="#F4A259"
+        android:pathData="M88,92L96,38L132,72z" />
+    <path
+        android:fillColor="#F4A259"
+        android:pathData="M212,92L204,38L168,72z" />
+    <path
+        android:fillColor="#F8BBD0"
+        android:pathData="M97,82L101,52L122,72z" />
+    <path
+        android:fillColor="#F8BBD0"
+        android:pathData="M203,82L199,52L178,72z" />
+
+    <!-- 머리 -->
+    <path
+        android:fillColor="#F4A259"
+        android:pathData="M150,110m-72,0a72,56 0,1 1,144 0a72,56 0,1 1,-144 0" />
+    <!-- 이마 줄무늬 -->
+    <path
+        android:fillColor="#D9822B"
+        android:pathData="M143,56h4v22h-4zM153,56h4v22h-4zM133,60h4v14h-4zM163,60h4v14h-4z" />
+
+    <!-- 눈 -->
+    <path
+        android:strokeColor="#3E2723"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M110,108Q120,98 130,108M170,108Q180,98 190,108" />
+    <!-- 볼터치 -->
+    <path
+        android:fillColor="#FFAB91"
+        android:pathData="M108,128m-11,0a11,7 0,1 1,22 0a11,7 0,1 1,-22 0M192,128m-11,0a11,7 0,1 1,22 0a11,7 0,1 1,-22 0" />
+    <!-- 코, 입 -->
+    <path
+        android:fillColor="#E57373"
+        android:pathData="M144,118h12l-6,7z" />
+    <path
+        android:strokeColor="#3E2723"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M150,125Q143,134 137,128M150,125Q157,134 163,128" />
+    <!-- 수염 -->
+    <path
+        android:strokeColor="#5D4037"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M95,118L65,112M95,124L64,126M205,118L235,112M205,124L236,126" />
+
+    <!-- 앞발 -->
+    <path
+        android:fillColor="#FFE0B2"
+        android:pathData="M118,252m-20,0a20,12 0,1 1,40 0a20,12 0,1 1,-40 0M182,252m-20,0a20,12 0,1 1,40 0a20,12 0,1 1,-40 0" />
+</vector>
