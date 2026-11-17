@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,10 +19,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
@@ -33,11 +42,14 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,14 +65,17 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.android_study_25th.ui.theme.Android_study_25thTheme
 
 class MainActivity : ComponentActivity() {
@@ -85,14 +100,13 @@ data class PostData(
     val time: String
 )
 
-val samplePost = PostData(
-    userName = "gks_gpdls_",
-    location = "우리집 거실",
-    content = "귀여운 뚱냥이",
-    imageRes = R.drawable.sample_cat,
-    likeCount = 256,
-    commentCount = 31,
-    time = "1시간 전"
+val postList = listOf(
+    PostData("gks_gpdls_", "우리집 거실", "귀여운 뚱냥이", R.drawable.sample_cat, 256, 31, "1시간 전"),
+    PostData("gks_gpdls_", "광안리 해수욕장", "노을 보러 광안리 왔다🌊", R.drawable.sample_sea, 98, 7, "3일 전"),
+    PostData("gks_gpdls_", "우리집 거실", "밥 먹고 또 잠..", R.drawable.sample_cat, 187, 12, "5일 전"),
+    PostData("gks_gpdls_", "광안리 해수욕장", "바다는 언제 봐도 좋다", R.drawable.sample_sea, 64, 3, "1주 전"),
+    PostData("gks_gpdls_", "동물병원", "다이어트 시작한 날", R.drawable.sample_cat, 301, 45, "2주 전"),
+    PostData("gks_gpdls_", "민락수변공원", "시험 끝나고 바다 산책", R.drawable.sample_sea, 77, 5, "3주 전")
 )
 
 // 하단바 탭
@@ -136,42 +150,31 @@ fun MainScreen() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(BottomTab.HOME.route) {
-                FeedScreen(post = samplePost)
+                HomeScreen()
             }
             composable(BottomTab.SEARCH.route) {
-                SearchScreen()
+                SearchScreen(onPostClick = { index -> navController.navigate("detail/$index") })
             }
             composable(BottomTab.PROFILE.route) {
-                ProfileScreen()
+                ProfileScreen(onPostClick = { index -> navController.navigate("detail/$index") })
+            }
+            composable(
+                route = "detail/{index}",
+                arguments = listOf(navArgument("index") { type = NavType.IntType })
+            ) { entry ->
+                val index = entry.arguments?.getInt("index") ?: 0
+                DetailScreen(post = postList[index], onBack = { navController.popBackStack() })
             }
         }
     }
 }
 
-// TODO 화면 채우기
 @Composable
-fun SearchScreen() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("탐색 화면")
-    }
-}
-
-@Composable
-fun ProfileScreen() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("마이 화면")
-    }
-}
-
-@Composable
-fun FeedScreen(post: PostData, modifier: Modifier = Modifier) {
-    var liked by remember { mutableStateOf(false) }
-
+fun HomeScreen() {
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
-            .verticalScroll(rememberScrollState())
     ) {
         // 상단 바
         Row(
@@ -193,6 +196,19 @@ fun FeedScreen(post: PostData, modifier: Modifier = Modifier) {
 
         HorizontalDivider(color = Color(0xFFEEEEEE))
 
+        LazyColumn {
+            items(postList) { post ->
+                PostItem(post = post)
+            }
+        }
+    }
+}
+
+@Composable
+fun PostItem(post: PostData) {
+    var liked by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
         // 작성자 프로필
         Row(
             modifier = Modifier
@@ -279,6 +295,140 @@ fun FeedScreen(post: PostData, modifier: Modifier = Modifier) {
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+fun SearchScreen(onPostClick: (Int) -> Unit) {
+    var keyword by remember { mutableStateOf("") }
+    val result = postList.filter { it.content.contains(keyword) || it.location.contains(keyword) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+    ) {
+        OutlinedTextField(
+            value = keyword,
+            onValueChange = { keyword = it },
+            placeholder = { Text("검색") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        )
+
+        if (result.isEmpty()) {
+            Text(
+                text = "검색 결과가 없어요",
+                color = Color.Gray,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 40.dp),
+                textAlign = TextAlign.Center
+            )
+        } else {
+            LazyVerticalGrid(columns = GridCells.Fixed(3)) {
+                itemsIndexed(result) { _, post ->
+                    GridImage(post = post, onClick = { onPostClick(postList.indexOf(post)) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ProfileScreen(onPostClick: (Int) -> Unit) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+    ) {
+        // 프로필 정보는 한 줄 전체 차지
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFFFB4A2)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("G", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        ProfileCount(number = postList.size, label = "게시물")
+                        ProfileCount(number = 152, label = "팔로워")
+                        ProfileCount(number = 140, label = "팔로잉")
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("gks_gpdls_", fontWeight = FontWeight.Bold)
+                Text("뚱냥이 집사 🐱 | 부산", fontSize = 14.sp)
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = { },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFEFEFEF),
+                        contentColor = Color.Black
+                    )
+                ) {
+                    Text("프로필 편집")
+                }
+            }
+        }
+
+        itemsIndexed(postList) { index, post ->
+            GridImage(post = post, onClick = { onPostClick(index) })
+        }
+    }
+}
+
+@Composable
+fun ProfileCount(number: Int, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = "$number", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        Text(text = label, fontSize = 13.sp)
+    }
+}
+
+@Composable
+fun GridImage(post: PostData, onClick: () -> Unit) {
+    Image(
+        painter = painterResource(id = post.imageRes),
+        contentDescription = post.content,
+        contentScale = ContentScale.Crop,
+        modifier = Modifier
+            .aspectRatio(1f)
+            .padding(1.dp)
+            .clickable { onClick() }
+    )
+}
+
+@Composable
+fun DetailScreen(post: PostData, onBack: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .verticalScroll(rememberScrollState())
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로가기")
+            }
+            Text("게시물", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        }
+        PostItem(post = post)
     }
 }
 
