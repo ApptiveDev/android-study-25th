@@ -4,9 +4,20 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,6 +64,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,8 +72,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -77,6 +91,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.android_study_25th.ui.theme.Android_study_25thTheme
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -147,7 +162,12 @@ fun MainScreen() {
         NavHost(
             navController = navController,
             startDestination = BottomTab.HOME.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            // 탭 이동할 때 살짝 밀리면서 나타나게
+            enterTransition = { fadeIn(tween(300)) + slideInHorizontally(tween(300)) { it / 5 } },
+            exitTransition = { fadeOut(tween(200)) },
+            popEnterTransition = { fadeIn(tween(300)) },
+            popExitTransition = { fadeOut(tween(200)) }
         ) {
             composable(BottomTab.HOME.route) {
                 HomeScreen()
@@ -160,7 +180,10 @@ fun MainScreen() {
             }
             composable(
                 route = "detail/{index}",
-                arguments = listOf(navArgument("index") { type = NavType.IntType })
+                arguments = listOf(navArgument("index") { type = NavType.IntType }),
+                // 상세화면은 오른쪽에서 들어오고 뒤로가기하면 오른쪽으로 나감
+                enterTransition = { slideInHorizontally(tween(300)) { it } },
+                popExitTransition = { slideOutHorizontally(tween(300)) { it } }
             ) { entry ->
                 val index = entry.arguments?.getInt("index") ?: 0
                 DetailScreen(post = postList[index], onBack = { navController.popBackStack() })
@@ -207,6 +230,22 @@ fun HomeScreen() {
 @Composable
 fun PostItem(post: PostData) {
     var liked by remember { mutableStateOf(false) }
+    var showBigHeart by remember { mutableStateOf(false) }
+
+    // 하트 누르면 통통 튀게
+    val heartScale by animateFloatAsState(
+        targetValue = if (liked) 1.2f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioHighBouncy),
+        label = "heartScale"
+    )
+
+    // 큰 하트는 잠깐 보였다가 사라짐
+    LaunchedEffect(showBigHeart) {
+        if (showBigHeart) {
+            delay(800)
+            showBigHeart = false
+        }
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         // 작성자 프로필
@@ -239,15 +278,36 @@ fun PostItem(post: PostData) {
             }
         }
 
-        // 게시물 이미지
-        Image(
-            painter = painterResource(id = post.imageRes),
-            contentDescription = "게시물 사진",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-        )
+        // 게시물 이미지 (두번 탭하면 좋아요)
+        Box(contentAlignment = Alignment.Center) {
+            Image(
+                painter = painterResource(id = post.imageRes),
+                contentDescription = "게시물 사진",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .pointerInput(Unit) {
+                        detectTapGestures(onDoubleTap = {
+                            liked = true
+                            showBigHeart = true
+                        })
+                    }
+            )
+            // Column 안이라 ColumnScope 버전이 잡혀서 풀네임으로 호출
+            androidx.compose.animation.AnimatedVisibility(
+                visible = showBigHeart,
+                enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy)) + fadeIn(),
+                exit = scaleOut() + fadeOut()
+            ) {
+                Icon(
+                    Icons.Filled.Favorite,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(100.dp)
+                )
+            }
+        }
 
         // 좋아요, 댓글, 공유 버튼
         Row(
@@ -260,7 +320,8 @@ fun PostItem(post: PostData) {
                 Icon(
                     imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                     contentDescription = "좋아요",
-                    tint = if (liked) Color.Red else Color.Black
+                    tint = if (liked) Color.Red else Color.Black,
+                    modifier = Modifier.scale(heartScale)
                 )
             }
             IconButton(onClick = { }) {
