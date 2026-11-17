@@ -8,6 +8,10 @@ import androidx.annotation.DrawableRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlin.math.sin
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -34,7 +38,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -380,12 +383,16 @@ fun PetFeedScreen() {
                                 // 같은 탭을 다시 눌러도 화면이 중복해서 쌓이지 않습니다.
                                 IconButton(
                                     onClick = {
-                                        navController.navigate(label) {
-                                            popUpTo(navController.graph.findStartDestination().id) {
-                                                saveState = true
+                                        if (label != selectedMenu) {
+                                            if (label == "홈") {
+                                                // 홈 복귀는 명시적으로 pop하여 역방향 전환을 실행합니다.
+                                                navController.popBackStack("홈", inclusive = false, saveState = true)
+                                            } else {
+                                                navController.navigate(label) {
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
                                             }
-                                            launchSingleTop = true
-                                            restoreState = true
                                         }
                                     },
                                     modifier = Modifier
@@ -462,7 +469,7 @@ fun PetFeedScreen() {
             ) {
                 composable("홈") {
                     Column(
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize().background(oatmeal)
                             .verticalScroll(rememberScrollState())
                             .padding(bottom = 20.dp)
                     ) {
@@ -586,6 +593,16 @@ fun PetFeedScreen() {
                         // 같은 카드 UI를 반복하며, 게시물마다 쓰담쓰담 상태를 따로 기억합니다.
                         posts.forEach { post ->
                             var isPetted by rememberSaveable { mutableStateOf(false) }
+                            // 클릭할 때만 재생합니다. 화면에 다시 들어온 것만으로는 재생하지 않습니다.
+                            var petBurst by remember { mutableIntStateOf(0) }
+                            val burstProgress = remember { Animatable(0f) }
+                            LaunchedEffect(petBurst, isPetted) {
+                                burstProgress.snapTo(0f)
+                                if (petBurst > 0 && isPetted) {
+                                    burstProgress.animateTo(1f, tween(950, easing = LinearEasing))
+                                }
+                            }
+
                             // 쓰담 상태가 바뀌면 발바닥이 부드럽게 커지고 색도 바뀝니다.
                             val pawScale by animateFloatAsState(
                                 targetValue = if (isPetted) 1.25f else 1f,
@@ -741,55 +758,84 @@ fun PetFeedScreen() {
                                     // 게시물 사진 또는 플레이스홀더
                                     val photo = post.imageRes
 
-                                    if (photo != null) {
-                                        Image(
-                                            painter = painterResource(photo),
-                                            contentDescription = "${post.petName}의 게시물 사진",
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .aspectRatio(1.15f)
-                                                .clip(RoundedCornerShape(18.dp))
-                                        )
-                                    } else {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .aspectRatio(1.15f)
-                                                .background(
-                                                    Color(0xFFF0F0E9),
-                                                    RoundedCornerShape(18.dp)
-                                                ),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Column(
-                                                horizontalAlignment = Alignment.CenterHorizontally
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (photo != null) {
+                                            Image(
+                                                painter = painterResource(photo),
+                                                contentDescription = "${post.petName}의 게시물 사진",
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .aspectRatio(1.15f)
+                                                    .clip(RoundedCornerShape(18.dp))
+                                            )
+                                        } else {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .aspectRatio(1.15f)
+                                                    .background(
+                                                        Color(0xFFF0F0E9),
+                                                        RoundedCornerShape(18.dp)
+                                                    ),
+                                                contentAlignment = Alignment.Center
                                             ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(72.dp)
-                                                        .background(
-                                                            pistachio.copy(alpha = 0.5f),
-                                                            CircleShape
-                                                        ),
-                                                    contentAlignment = Alignment.Center
+                                                Column(
+                                                    horizontalAlignment = Alignment.CenterHorizontally
                                                 ) {
-                                                    Icon(
-                                                        imageVector = paw,
-                                                        contentDescription = null,
-                                                        tint = muted,
-                                                        modifier = Modifier.size(34.dp)
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(72.dp)
+                                                            .background(
+                                                                pistachio.copy(alpha = 0.5f),
+                                                                CircleShape
+                                                            ),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = paw,
+                                                            contentDescription = null,
+                                                            tint = muted,
+                                                            modifier = Modifier.size(34.dp)
+                                                        )
+                                                    }
+
+                                                    Spacer(Modifier.height(12.dp))
+
+                                                    Text(
+                                                        text = "반려동물 사진",
+                                                        fontSize = 14.sp,
+                                                        color = muted
                                                     )
                                                 }
-
-                                                Spacer(Modifier.height(12.dp))
-
-                                                Text(
-                                                    text = "반려동물 사진",
-                                                    fontSize = 14.sp,
-                                                    color = muted
-                                                )
                                             }
+                                        }
+                                        val progress = burstProgress.value
+                                        if (progress > 0f && progress < 1f) {
+                                            Icon(
+                                                imageVector = paw,
+                                                contentDescription = null,
+                                                tint = tomato,
+                                                modifier = Modifier.size(100.dp).graphicsLayer {
+                                                    // 처음에는 빠르게 커지고, 좌우로 흔들린 뒤 서서히 사라집니다.
+                                                    val size = if (progress < 0.3f) {
+                                                        0.2f + (progress / 0.3f) * 1.05f
+                                                    } else {
+                                                        1.25f - ((progress - 0.3f) / 0.7f) * 0.25f
+                                                    }
+                                                    scaleX = size
+                                                    scaleY = size
+                                                    rotationZ = sin(progress * Math.PI.toFloat() * 6f) * 18f * (1f - progress)
+                                                    alpha = when {
+                                                        progress < 0.12f -> progress / 0.12f
+                                                        progress > 0.6f -> (1f - progress) / 0.4f
+                                                        else -> 1f
+                                                    }
+                                                }
+                                            )
                                         }
                                     }
 
@@ -800,7 +846,10 @@ fun PetFeedScreen() {
                                     ) {
                                         IconToggleButton(
                                             checked = isPetted,
-                                            onCheckedChange = { isPetted = it }
+                                            onCheckedChange = {
+                                                isPetted = it
+                                                if (it) petBurst++
+                                            }
                                         ) {
                                             Icon(
                                                 imageVector = paw,
@@ -957,7 +1006,7 @@ fun PetFeedScreen() {
                 }
                 composable("커뮤니티") {
                     Column(
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize().background(oatmeal)
                             .verticalScroll(rememberScrollState())
                             .padding(bottom = 20.dp)
                     ) {
