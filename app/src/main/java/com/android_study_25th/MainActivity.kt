@@ -493,10 +493,43 @@ fun DetailScreen(post: PostData, onBack: () -> Unit) {
     }
 }
 
-@Preview(showBackground = true)
+// 오른쪽 미리보기에서 화면별로 확인용
+@Preview(name = "전체 (하단바)", showBackground = true, showSystemUi = true)
 @Composable
 fun MainScreenPreview() {
     Android_study_25thTheme {
         MainScreen()
+    }
+}
+
+@Preview(name = "홈", showBackground = true, heightDp = 800)
+@Composable
+fun HomeScreenPreview() {
+    Android_study_25thTheme {
+        HomeScreen()
+    }
+}
+
+@Preview(name = "탐색", showBackground = true, heightDp = 800)
+@Composable
+fun SearchScreenPreview() {
+    Android_study_25thTheme {
+        SearchScreen(onPostClick = { })
+    }
+}
+
+@Preview(name = "마이", showBackground = true, heightDp = 800)
+@Composable
+fun ProfileScreenPreview() {
+    Android_study_25thTheme {
+        ProfileScreen(onPostClick = { })
+    }
+}
+
+@Preview(name = "게시물 상세", showBackground = true, heightDp = 800)
+@Composable
+fun DetailScreenPreview() {
+    Android_study_25thTheme {
+        DetailScreen(post = postList[0], onBack = { })
     }
 }
