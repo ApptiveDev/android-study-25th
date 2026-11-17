@@ -9,8 +9,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.ui.draw.scale
@@ -434,11 +432,32 @@ fun PetFeedScreen() {
             NavHost(
                 navController = navController,
                 startDestination = "홈",
-                // 화면 이동 시 살짝 밀려오면서 나타나는 애니메이션입니다.
-                enterTransition = { fadeIn(tween(220)) + slideInHorizontally(tween(220)) { it / 12 } },
-                exitTransition = { fadeOut(tween(180)) },
-                popEnterTransition = { fadeIn(tween(220)) },
-                popExitTransition = { fadeOut(tween(180)) + slideOutHorizontally(tween(180)) { it / 12 } },
+                // 오른쪽 탭(커뮤니티)으로 가면 왼쪽으로, 홈으로 돌아오면 오른쪽으로 이동합니다.
+                // 들어오는 화면과 나가는 화면을 같은 속도로 움직여 연결감을 줍니다.
+                enterTransition = {
+                    val toCommunity = targetState.destination.route == "커뮤니티"
+                    slideInHorizontally(tween(320)) { width ->
+                        if (toCommunity) width else -width
+                    }
+                },
+                exitTransition = {
+                    val toCommunity = targetState.destination.route == "커뮤니티"
+                    slideOutHorizontally(tween(320)) { width ->
+                        if (toCommunity) -width else width
+                    }
+                },
+                popEnterTransition = {
+                    val toCommunity = targetState.destination.route == "커뮤니티"
+                    slideInHorizontally(tween(320)) { width ->
+                        if (toCommunity) width else -width
+                    }
+                },
+                popExitTransition = {
+                    val toCommunity = targetState.destination.route == "커뮤니티"
+                    slideOutHorizontally(tween(320)) { width ->
+                        if (toCommunity) -width else width
+                    }
+                },
                 modifier = Modifier.fillMaxSize().padding(innerPadding)
             ) {
                 composable("홈") {
