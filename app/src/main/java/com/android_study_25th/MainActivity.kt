@@ -5,6 +5,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
@@ -425,6 +434,11 @@ fun PetFeedScreen() {
             NavHost(
                 navController = navController,
                 startDestination = "홈",
+                // 화면 이동 시 살짝 밀려오면서 나타나는 애니메이션입니다.
+                enterTransition = { fadeIn(tween(220)) + slideInHorizontally(tween(220)) { it / 12 } },
+                exitTransition = { fadeOut(tween(180)) },
+                popEnterTransition = { fadeIn(tween(220)) },
+                popExitTransition = { fadeOut(tween(180)) + slideOutHorizontally(tween(180)) { it / 12 } },
                 modifier = Modifier.fillMaxSize().padding(innerPadding)
             ) {
                 composable("홈") {
@@ -553,6 +567,17 @@ fun PetFeedScreen() {
                         // 같은 카드 UI를 반복하며, 게시물마다 쓰담쓰담 상태를 따로 기억합니다.
                         posts.forEach { post ->
                             var isPetted by rememberSaveable { mutableStateOf(false) }
+                            // 쓰담 상태가 바뀌면 발바닥이 부드럽게 커지고 색도 바뀝니다.
+                            val pawScale by animateFloatAsState(
+                                targetValue = if (isPetted) 1.25f else 1f,
+                                animationSpec = spring(dampingRatio = 0.45f, stiffness = 500f),
+                                label = "쓰담 크기"
+                            )
+                            val pawColor by animateColorAsState(
+                                targetValue = if (isPetted) tomato else muted,
+                                animationSpec = tween(200),
+                                label = "쓰담 색상"
+                            )
                             var showComments by remember { mutableStateOf(false) }
                             var commentInput by remember { mutableStateOf("") }
                             val postComments = addedComments.filter {
@@ -761,7 +786,8 @@ fun PetFeedScreen() {
                                             Icon(
                                                 imageVector = paw,
                                                 contentDescription = if (isPetted) "쓰담쓰담 취소" else "쓰담쓰담",
-                                                tint = if (isPetted) tomato else muted
+                                                tint = pawColor,
+                                                modifier = Modifier.scale(pawScale)
                                             )
                                         }
 
