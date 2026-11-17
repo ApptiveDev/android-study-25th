@@ -10,6 +10,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlin.math.sin
 import androidx.compose.animation.core.tween
@@ -443,25 +444,25 @@ fun PetFeedScreen() {
                 // 들어오는 화면과 나가는 화면을 같은 속도로 움직여 연결감을 줍니다.
                 enterTransition = {
                     val toCommunity = targetState.destination.route == "커뮤니티"
-                    slideInHorizontally(tween(320)) { width ->
+                    slideInHorizontally(tween(420, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f))) { width ->
                         if (toCommunity) width else -width
                     }
                 },
                 exitTransition = {
                     val toCommunity = targetState.destination.route == "커뮤니티"
-                    slideOutHorizontally(tween(320)) { width ->
+                    slideOutHorizontally(tween(420, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f))) { width ->
                         if (toCommunity) -width else width
                     }
                 },
                 popEnterTransition = {
                     val toCommunity = targetState.destination.route == "커뮤니티"
-                    slideInHorizontally(tween(320)) { width ->
+                    slideInHorizontally(tween(420, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f))) { width ->
                         if (toCommunity) width else -width
                     }
                 },
                 popExitTransition = {
                     val toCommunity = targetState.destination.route == "커뮤니티"
-                    slideOutHorizontally(tween(320)) { width ->
+                    slideOutHorizontally(tween(420, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f))) { width ->
                         if (toCommunity) -width else width
                     }
                 },
