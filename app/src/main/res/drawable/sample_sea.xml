@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="300dp"
+    android:height="300dp"
+    android:viewportWidth="300"
+    android:viewportHeight="300">
+
+    <!-- 하늘 -->
+    <path
+        android:fillColor="#FFB4A2"
+        android:pathData="M0,0h300v170h-300z" />
+    <path
+        android:fillColor="#FFCDB2"
+        android:pathData="M0,90h300v80h-300z" />
+
+    <!-- 해 -->
+    <path
+        android:fillColor="#FFF1C1"
+        android:pathData="M150,170m-40,0a40,40 0,1 1,80 0z" />
+
+    <!-- 다리 -->
+    <path
+        android:fillColor="#6D597A"
+        android:pathData="M0,150h300v4h-300z" />
+    <path
+        android:fillColor="#6D597A"
+        android:pathData="M60,110h5v44h-5zM235,110h5v44h-5z" />
+    <path
+        android:strokeColor="#6D597A"
+        android:strokeWidth="2"
+        android:pathData="M0,150Q32,112 62,110Q150,150 237,110Q268,112 300,150" />
+
+    <!-- 바다 -->
+    <path
+        android:fillColor="#355070"
+        android:pathData="M0,170h300v130h-300z" />
+    <path
+        android:fillColor="#4A6A8C"
+        android:pathData="M0,200q25,-8 50,0t50,0t50,0t50,0t50,0t50,0v100h-300z" />
+    <path
+        android:fillColor="#E8D5B7"
+        android:pathData="M0,250q75,-15 150,0t150,0v50h-300z" />
+</vector>
