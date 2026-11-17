@@ -5,6 +5,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlin.math.sin
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
@@ -26,6 +38,11 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -269,7 +286,10 @@ fun PetFeedScreen() {
     // 실행 중 등록한 댓글입니다. 홈과 커뮤니티를 오가도 유지됩니다.
     val addedComments = remember { mutableStateListOf<CommentData>() }
 
-    var selectedMenu by remember { mutableStateOf("홈") }
+    // NavController가 현재 화면과 뒤로 가기 기록을 관리합니다.
+    val navController = rememberNavController()
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val selectedMenu = backStackEntry?.destination?.route ?: "홈"
     var snackCategory by remember { mutableStateOf("전체") }
     var snackSearch by remember { mutableStateOf("") }
 
@@ -353,10 +373,7 @@ fun PetFeedScreen() {
                     ) {
                         val menu = listOf(
                             "홈" to Icons.Default.Home,
-                            "탐색" to compass,
-                            "작성" to Icons.Default.Add,
-                            "커뮤니티" to paw,
-                            "마이" to Icons.Default.Person
+                            "커뮤니티" to paw
                         )
 
                         menu.forEach { (label, icon) ->
@@ -364,11 +381,19 @@ fun PetFeedScreen() {
                                 modifier = Modifier.weight(1f),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                // 홈과 커뮤니티만 같은 함수 안에서 화면을 전환합니다.
+                                // 같은 탭을 다시 눌러도 화면이 중복해서 쌓이지 않습니다.
                                 IconButton(
                                     onClick = {
-                                        if (label == "홈" || label == "커뮤니티") {
-                                            selectedMenu = label
+                                        if (label != selectedMenu) {
+                                            if (label == "홈") {
+                                                // 홈 복귀는 명시적으로 pop하여 역방향 전환을 실행합니다.
+                                                navController.popBackStack("홈", inclusive = false, saveState = true)
+                                            } else {
+                                                navController.navigate(label) {
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
+                                            }
                                         }
                                     },
                                     modifier = Modifier
@@ -412,609 +437,701 @@ fun PetFeedScreen() {
                 }
             }
         ) { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(bottom = 20.dp)
+            NavHost(
+                navController = navController,
+                startDestination = "홈",
+                // 오른쪽 탭(커뮤니티)으로 가면 왼쪽으로, 홈으로 돌아오면 오른쪽으로 이동합니다.
+                // 들어오는 화면과 나가는 화면을 같은 속도로 움직여 연결감을 줍니다.
+                enterTransition = {
+                    val toCommunity = targetState.destination.route == "커뮤니티"
+                    slideInHorizontally(tween(420, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f))) { width ->
+                        if (toCommunity) width else -width
+                    }
+                },
+                exitTransition = {
+                    val toCommunity = targetState.destination.route == "커뮤니티"
+                    slideOutHorizontally(tween(420, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f))) { width ->
+                        if (toCommunity) -width else width
+                    }
+                },
+                popEnterTransition = {
+                    val toCommunity = targetState.destination.route == "커뮤니티"
+                    slideInHorizontally(tween(420, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f))) { width ->
+                        if (toCommunity) width else -width
+                    }
+                },
+                popExitTransition = {
+                    val toCommunity = targetState.destination.route == "커뮤니티"
+                    slideOutHorizontally(tween(420, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f))) { width ->
+                        if (toCommunity) -width else width
+                    }
+                },
+                modifier = Modifier.fillMaxSize().padding(innerPadding)
             ) {
-                if (selectedMenu == "커뮤니티") {
-                    // ===== 간식 커뮤니티 =====
+                composable("홈") {
                     Column(
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                        modifier = Modifier.fillMaxSize().background(oatmeal)
+                            .verticalScroll(rememberScrollState())
+                            .padding(bottom = 20.dp)
                     ) {
-                        Text(
-                            text = "간식 커뮤니티",
-                            fontSize = 26.sp,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                        Text(
-                            text = "우리 아이가 좋아하는 간식을 나눠요",
-                            fontSize = 13.sp,
-                            color = muted
-                        )
-                        OutlinedTextField(
-                            value = snackSearch,
-                            onValueChange = { snackSearch = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("어떤 간식을 찾고 있나요?", fontSize = 13.sp) },
-                            leadingIcon = {
-                                Icon(Icons.Default.Search, contentDescription = null)
-                            },
-                            singleLine = true,
-                            shape = RoundedCornerShape(28.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = pistachio,
-                                unfocusedBorderColor = pistachio,
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White,
-                                focusedTextColor = olive,
-                                unfocusedTextColor = olive,
-                                focusedLeadingIconColor = olive,
-                                unfocusedLeadingIconColor = muted,
-                                focusedPlaceholderColor = muted,
-                                unfocusedPlaceholderColor = muted,
-                                cursorColor = tomato
+                        // ===== 상단 헤더 =====
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    start = 22.dp,
+                                    end = 12.dp,
+                                    top = 12.dp,
+                                    bottom = 12.dp
+                                ),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = paw,
+                                contentDescription = null,
+                                modifier = Modifier.size(27.dp)
                             )
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf("전체", "강아지", "고양이").forEach { category ->
-                                FilterChip(
-                                    selected = snackCategory == category,
-                                    onClick = { snackCategory = category },
-                                    label = { Text(category) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        containerColor = softGreen,
-                                        labelColor = olive,
-                                        selectedContainerColor = tomato,
-                                        selectedLabelColor = Color.White
-                                    )
+
+                            Spacer(Modifier.width(7.dp))
+
+                            Text(
+                                text = appName,
+                                fontSize = 30.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = (-1).sp
+                            )
+
+                            Spacer(Modifier.weight(1f))
+
+                            Row(
+                                modifier = Modifier.background(
+                                    softGreen,
+                                    RoundedCornerShape(24.dp)
                                 )
+                            ) {
+                                IconButton(onClick = {}) {
+                                    Icon(
+                                        imageVector = Icons.Default.Search,
+                                        contentDescription = "검색"
+                                    )
+                                }
+
+                                IconButton(onClick = {}) {
+                                    Box {
+                                        Icon(
+                                            imageVector = Icons.Default.Notifications,
+                                            contentDescription = "알림"
+                                        )
+
+                                        Box(
+                                            modifier = Modifier
+                                                .size(5.dp)
+                                                .align(Alignment.TopEnd)
+                                                .background(tomato, CircleShape)
+                                        )
+                                    }
+                                }
                             }
                         }
-                        val visibleSnacks = snacks.filter { snack ->
-                            (snackCategory == "전체" || snack.petType == snackCategory) &&
-                                (snack.name.contains(snackSearch, ignoreCase = true) ||
-                                    snack.review.contains(snackSearch, ignoreCase = true))
+
+                        // ===== 가로 스크롤 카테고리 =====
+                        // 이 Row만 가로로 움직입니다.
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            categories.forEach { (name, emoji) ->
+                                val selected = selectedCategory == name
+
+                                Column(
+                                    modifier = Modifier.width(62.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    FilledIconButton(
+                                        onClick = {}, // 동물별 필터링 없이 전체 피드를 유지합니다.
+                                        modifier = Modifier.size(58.dp),
+                                        shape = CircleShape,
+                                        colors = IconButtonDefaults.filledIconButtonColors(
+                                            containerColor = if (selected) tomato else softGreen,
+                                            contentColor = if (selected) Color.White else olive
+                                        )
+                                    ) {
+                                        if (name == "전체") {
+                                            Icon(
+                                                imageVector = paw,
+                                                contentDescription = "전체",
+                                                modifier = Modifier.size(26.dp)
+                                            )
+                                        } else {
+                                            Text(
+                                                text = emoji,
+                                                fontSize = 25.sp
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(Modifier.height(6.dp))
+
+                                    Text(
+                                        text = name,
+                                        fontSize = 12.sp,
+                                        color = if (selected) tomato else olive,
+                                        fontWeight = if (selected) {
+                                            FontWeight.Bold
+                                        } else {
+                                            FontWeight.Medium
+                                        }
+                                    )
+                                }
+                            }
                         }
-                        if (visibleSnacks.isEmpty()) {
-                            Text("검색한 간식이 없어요.", color = muted, fontSize = 14.sp)
-                        }
-                        visibleSnacks.forEach { snack ->
+
+                        Spacer(Modifier.height(14.dp))
+
+                        // 같은 카드 UI를 반복하며, 게시물마다 쓰담쓰담 상태를 따로 기억합니다.
+                        posts.forEach { post ->
+                            var isPetted by rememberSaveable { mutableStateOf(false) }
+                            // 클릭할 때만 재생합니다. 화면에 다시 들어온 것만으로는 재생하지 않습니다.
+                            var petBurst by remember { mutableIntStateOf(0) }
+                            val burstProgress = remember { Animatable(0f) }
+                            LaunchedEffect(petBurst, isPetted) {
+                                burstProgress.snapTo(0f)
+                                if (petBurst > 0 && isPetted) {
+                                    burstProgress.animateTo(1f, tween(950, easing = LinearEasing))
+                                }
+                            }
+
+                            // 쓰담 상태가 바뀌면 발바닥이 부드럽게 커지고 색도 바뀝니다.
+                            val pawScale by animateFloatAsState(
+                                targetValue = if (isPetted) 1.25f else 1f,
+                                animationSpec = spring(dampingRatio = 0.45f, stiffness = 500f),
+                                label = "쓰담 크기"
+                            )
+                            val pawColor by animateColorAsState(
+                                targetValue = if (isPetted) tomato else muted,
+                                animationSpec = tween(200),
+                                label = "쓰담 색상"
+                            )
+                            var showComments by remember { mutableStateOf(false) }
+                            var commentInput by remember { mutableStateOf("") }
+                            val postComments = addedComments.filter {
+                                it.postUserName == post.userName
+                            }
+
+                            if (showComments) {
+                                AlertDialog(
+                                    onDismissRequest = { showComments = false },
+                                    containerColor = oatmeal,
+                                    titleContentColor = olive,
+                                    textContentColor = olive,
+                                    title = { Text("${post.petName}에게 댓글 남기기") },
+                                    text = {
+                                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                            Column(
+                                                modifier = Modifier.fillMaxWidth()
+                                                    .heightIn(max = 180.dp)
+                                                    .verticalScroll(rememberScrollState()),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                if (postComments.isEmpty()) {
+                                                    Text("첫 댓글을 남겨 주세요!", color = muted)
+                                                }
+                                                postComments.forEach { item ->
+                                                    Text("${item.userName}: ${item.content}")
+                                                }
+                                            }
+                                            OutlinedTextField(
+                                                value = commentInput,
+                                                onValueChange = { commentInput = it },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                label = { Text("댓글 입력") },
+                                                minLines = 2,
+                                                maxLines = 4,
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    focusedTextColor = olive,
+                                                    unfocusedTextColor = olive,
+                                                    focusedBorderColor = tomato,
+                                                    unfocusedBorderColor = muted,
+                                                    focusedLabelColor = olive,
+                                                    unfocusedLabelColor = muted,
+                                                    cursorColor = tomato
+                                                )
+                                            )
+                                        }
+                                    },
+                                    confirmButton = {
+                                        TextButton(
+                                            enabled = commentInput.isNotBlank(),
+                                            onClick = {
+                                                addedComments.add(CommentData(
+                                                    postUserName = post.userName,
+                                                    userName = "나",
+                                                    content = commentInput.trim()
+                                                ))
+                                                commentInput = ""
+                                            },
+                                            colors = ButtonDefaults.textButtonColors(contentColor = tomato)
+                                        ) { Text("등록") }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showComments = false }) {
+                                            Text("닫기", color = olive)
+                                        }
+                                    }
+                                )
+                            }
+                            // ===== 게시물 카드 =====
                             Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(18.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                shape = RoundedCornerShape(24.dp),
                                 color = Color.White,
                                 contentColor = olive
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    val snackImage = snack.imageRes
-                                    if (snackImage != null) {
-                                        Image(
-                                            painter = painterResource(snackImage),
-                                            contentDescription = snack.name,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.size(64.dp)
-                                                .clip(RoundedCornerShape(14.dp))
-                                        )
-                                    } else {
-                                        Box(
-                                            modifier = Modifier.size(64.dp)
-                                                .background(pistachio, RoundedCornerShape(14.dp)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(paw, contentDescription = "간식 사진 없음",
-                                                modifier = Modifier.size(30.dp), tint = olive)
-                                        }
-                                    }
-                                    Column(
-                                        modifier = Modifier.weight(1f),
-                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                Column(Modifier.padding(14.dp)) {
+                                    // 프로필과 게시물 정보
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text(snack.name, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Default.Star, contentDescription = "평점",
-                                                tint = tomato, modifier = Modifier.size(15.dp))
-                                            Spacer(Modifier.width(4.dp))
-                                            Text("${snack.rating} · ${snack.petType}",
-                                                fontSize = 11.sp, color = muted)
-                                        }
-                                        Text(
-                                            text = snack.review,
-                                            fontSize = 11.sp,
-                                            color = muted,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                    // 상세 화면은 이번 과제에서 구현하지 않습니다.
-                                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = null,
-                                        modifier = Modifier.size(20.dp), tint = olive)
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    // ===== 상단 헤더 =====
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                start = 22.dp,
-                                end = 12.dp,
-                                top = 12.dp,
-                                bottom = 12.dp
-                            ),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = paw,
-                            contentDescription = null,
-                            modifier = Modifier.size(27.dp)
-                        )
+                                        val profileImage = post.profileImageRes
 
-                        Spacer(Modifier.width(7.dp))
-
-                        Text(
-                            text = appName,
-                            fontSize = 30.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = (-1).sp
-                        )
-
-                        Spacer(Modifier.weight(1f))
-
-                        Row(
-                            modifier = Modifier.background(
-                                softGreen,
-                                RoundedCornerShape(24.dp)
-                            )
-                        ) {
-                            IconButton(onClick = {}) {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = "검색"
-                                )
-                            }
-
-                            IconButton(onClick = {}) {
-                                Box {
-                                    Icon(
-                                        imageVector = Icons.Default.Notifications,
-                                        contentDescription = "알림"
-                                    )
-
-                                    Box(
-                                        modifier = Modifier
-                                            .size(5.dp)
-                                            .align(Alignment.TopEnd)
-                                            .background(tomato, CircleShape)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // ===== 가로 스크롤 카테고리 =====
-                    // 이 Row만 가로로 움직입니다.
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        categories.forEach { (name, emoji) ->
-                            val selected = selectedCategory == name
-
-                            Column(
-                                modifier = Modifier.width(62.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                FilledIconButton(
-                                    onClick = {}, // 동물별 필터링 없이 전체 피드를 유지합니다.
-                                    modifier = Modifier.size(58.dp),
-                                    shape = CircleShape,
-                                    colors = IconButtonDefaults.filledIconButtonColors(
-                                        containerColor = if (selected) tomato else softGreen,
-                                        contentColor = if (selected) Color.White else olive
-                                    )
-                                ) {
-                                    if (name == "전체") {
-                                        Icon(
-                                            imageVector = paw,
-                                            contentDescription = "전체",
-                                            modifier = Modifier.size(26.dp)
-                                        )
-                                    } else {
-                                        Text(
-                                            text = emoji,
-                                            fontSize = 25.sp
-                                        )
-                                    }
-                                }
-
-                                Spacer(Modifier.height(6.dp))
-
-                                Text(
-                                    text = name,
-                                    fontSize = 12.sp,
-                                    color = if (selected) tomato else olive,
-                                    fontWeight = if (selected) {
-                                        FontWeight.Bold
-                                    } else {
-                                        FontWeight.Medium
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(14.dp))
-
-                    // 같은 카드 UI를 반복하며, 게시물마다 쓰담쓰담 상태를 따로 기억합니다.
-                    posts.forEach { post ->
-                        var isPetted by remember { mutableStateOf(false) }
-                        var showComments by remember { mutableStateOf(false) }
-                        var commentInput by remember { mutableStateOf("") }
-                        val postComments = addedComments.filter {
-                            it.postUserName == post.userName
-                        }
-
-                        if (showComments) {
-                            AlertDialog(
-                                onDismissRequest = { showComments = false },
-                                containerColor = oatmeal,
-                                titleContentColor = olive,
-                                textContentColor = olive,
-                                title = { Text("${post.petName}에게 댓글 남기기") },
-                                text = {
-                                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        Column(
-                                            modifier = Modifier.fillMaxWidth()
-                                                .heightIn(max = 180.dp)
-                                                .verticalScroll(rememberScrollState()),
-                                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                                        ) {
-                                            if (postComments.isEmpty()) {
-                                                Text("첫 댓글을 남겨 주세요!", color = muted)
-                                            }
-                                            postComments.forEach { item ->
-                                                Text("${item.userName}: ${item.content}")
-                                            }
-                                        }
-                                        OutlinedTextField(
-                                            value = commentInput,
-                                            onValueChange = { commentInput = it },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            label = { Text("댓글 입력") },
-                                            minLines = 2,
-                                            maxLines = 4,
-                                            colors = OutlinedTextFieldDefaults.colors(
-                                                focusedTextColor = olive,
-                                                unfocusedTextColor = olive,
-                                                focusedBorderColor = tomato,
-                                                unfocusedBorderColor = muted,
-                                                focusedLabelColor = olive,
-                                                unfocusedLabelColor = muted,
-                                                cursorColor = tomato
+                                        if (profileImage != null) {
+                                            Image(
+                                                painter = painterResource(profileImage),
+                                                contentDescription = "${post.petName} 프로필 사진",
+                                                modifier = Modifier
+                                                    .size(44.dp)
+                                                    .clip(CircleShape),
+                                                contentScale = ContentScale.Crop
                                             )
-                                        )
-                                    }
-                                },
-                                confirmButton = {
-                                    TextButton(
-                                        enabled = commentInput.isNotBlank(),
-                                        onClick = {
-                                            addedComments.add(CommentData(
-                                                postUserName = post.userName,
-                                                userName = "나",
-                                                content = commentInput.trim()
-                                            ))
-                                            commentInput = ""
-                                        },
-                                        colors = ButtonDefaults.textButtonColors(contentColor = tomato)
-                                    ) { Text("등록") }
-                                },
-                                dismissButton = {
-                                    TextButton(onClick = { showComments = false }) {
-                                        Text("닫기", color = olive)
-                                    }
-                                }
-                            )
-                        }
-                        // ===== 게시물 카드 =====
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            shape = RoundedCornerShape(24.dp),
-                            color = Color.White,
-                            contentColor = olive
-                        ) {
-                            Column(Modifier.padding(14.dp)) {
-                                // 프로필과 게시물 정보
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    val profileImage = post.profileImageRes
-
-                                    if (profileImage != null) {
-                                        Image(
-                                            painter = painterResource(profileImage),
-                                            contentDescription = "${post.petName} 프로필 사진",
-                                            modifier = Modifier
-                                                .size(44.dp)
-                                                .clip(CircleShape),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                    } else {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(44.dp)
-                                                .background(pistachio, CircleShape),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = paw,
-                                                contentDescription = "프로필 사진 없음",
-                                                modifier = Modifier.size(23.dp)
-                                            )
-                                        }
-                                    }
-
-                                    Spacer(Modifier.width(10.dp))
-
-                                    Column(Modifier.weight(1f)) {
-                                        Text(
-                                            text = post.userName,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-
-                                        Text(
-                                            text = "${post.petName} · ${post.petAge} · ${post.petType}",
-                                            fontSize = 11.sp,
-                                            color = muted
-                                        )
-
-                                        Text(
-                                            text = post.postedAt,
-                                            fontSize = 10.sp,
-                                            color = muted
-                                        )
-                                    }
-
-                                    IconButton(onClick = {}) {
-                                        Icon(
-                                            imageVector = Icons.Default.MoreVert,
-                                            contentDescription = "게시물 더보기"
-                                        )
-                                    }
-                                }
-
-                                Spacer(Modifier.height(12.dp))
-
-                                // 게시물 사진 또는 플레이스홀더
-                                val photo = post.imageRes
-
-                                if (photo != null) {
-                                    Image(
-                                        painter = painterResource(photo),
-                                        contentDescription = "${post.petName}의 게시물 사진",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .aspectRatio(1.15f)
-                                            .clip(RoundedCornerShape(18.dp))
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .aspectRatio(1.15f)
-                                            .background(
-                                                Color(0xFFF0F0E9),
-                                                RoundedCornerShape(18.dp)
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Column(
-                                            horizontalAlignment = Alignment.CenterHorizontally
-                                        ) {
+                                        } else {
                                             Box(
                                                 modifier = Modifier
-                                                    .size(72.dp)
-                                                    .background(
-                                                        pistachio.copy(alpha = 0.5f),
-                                                        CircleShape
-                                                    ),
+                                                    .size(44.dp)
+                                                    .background(pistachio, CircleShape),
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 Icon(
                                                     imageVector = paw,
-                                                    contentDescription = null,
-                                                    tint = muted,
-                                                    modifier = Modifier.size(34.dp)
+                                                    contentDescription = "프로필 사진 없음",
+                                                    modifier = Modifier.size(23.dp)
                                                 )
                                             }
+                                        }
 
-                                            Spacer(Modifier.height(12.dp))
+                                        Spacer(Modifier.width(10.dp))
+
+                                        Column(Modifier.weight(1f)) {
+                                            Text(
+                                                text = post.userName,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
 
                                             Text(
-                                                text = "반려동물 사진",
-                                                fontSize = 14.sp,
+                                                text = "${post.petName} · ${post.petAge} · ${post.petType}",
+                                                fontSize = 11.sp,
+                                                color = muted
+                                            )
+
+                                            Text(
+                                                text = post.postedAt,
+                                                fontSize = 10.sp,
                                                 color = muted
                                             )
                                         }
-                                    }
-                                }
 
-                                // 쓰담쓰담, 댓글, 공유, 저장
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    IconToggleButton(
-                                        checked = isPetted,
-                                        onCheckedChange = { isPetted = it }
-                                    ) {
-                                        Icon(
-                                            imageVector = paw,
-                                            contentDescription = if (isPetted) "쓰담쓰담 취소" else "쓰담쓰담",
-                                            tint = if (isPetted) tomato else muted
-                                        )
-                                    }
-
-                                    IconButton(onClick = { showComments = true }) {
-                                        Icon(
-                                            imageVector = comment,
-                                            contentDescription = "댓글"
-                                        )
-                                    }
-
-                                    IconButton(onClick = {}) {
-                                        Icon(
-                                            imageVector = Icons.AutoMirrored.Filled.Send,
-                                            contentDescription = "공유"
-                                        )
-                                    }
-
-                                    Spacer(Modifier.weight(1f))
-
-                                    IconButton(onClick = {}) {
-                                        Icon(
-                                            imageVector = bookmark,
-                                            contentDescription = "저장"
-                                        )
-                                    }
-                                }
-
-                                Text(
-                                    text = "쓰담쓰담 ${post.likes + if (isPetted) 1 else 0}회",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-
-                                Spacer(Modifier.height(5.dp))
-
-                                // 게시물 본문
-                                Text(
-                                    text = buildAnnotatedString {
-                                        withStyle(
-                                            SpanStyle(fontWeight = FontWeight.Bold)
-                                        ) {
-                                            append(post.userName)
+                                        IconButton(onClick = {}) {
+                                            Icon(
+                                                imageVector = Icons.Default.MoreVert,
+                                                contentDescription = "게시물 더보기"
+                                            )
                                         }
-                                        append("  ")
-                                        append(post.content)
-                                    },
-                                    fontSize = 13.sp,
-                                    lineHeight = 19.sp
-                                )
+                                    }
 
-                                Spacer(Modifier.height(12.dp))
+                                    Spacer(Modifier.height(12.dp))
 
-                                // 간식 정보와 해시태그
-                                // 화면이 좁으면 다음 줄로 넘어갑니다.
-                                FlowRow(
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    if (post.snackInfo.isNotBlank()) {
-                                        Row(
-                                            modifier = Modifier
-                                                .background(
-                                                    softGreen,
-                                                    RoundedCornerShape(20.dp)
-                                                )
-                                                .padding(
-                                                    horizontal = 10.dp,
-                                                    vertical = 6.dp
-                                                ),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
+                                    // 게시물 사진 또는 플레이스홀더
+                                    val photo = post.imageRes
+
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (photo != null) {
+                                            Image(
+                                                painter = painterResource(photo),
+                                                contentDescription = "${post.petName}의 게시물 사진",
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .aspectRatio(1.15f)
+                                                    .clip(RoundedCornerShape(18.dp))
+                                            )
+                                        } else {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .aspectRatio(1.15f)
+                                                    .background(
+                                                        Color(0xFFF0F0E9),
+                                                        RoundedCornerShape(18.dp)
+                                                    ),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Column(
+                                                    horizontalAlignment = Alignment.CenterHorizontally
+                                                ) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(72.dp)
+                                                            .background(
+                                                                pistachio.copy(alpha = 0.5f),
+                                                                CircleShape
+                                                            ),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = paw,
+                                                            contentDescription = null,
+                                                            tint = muted,
+                                                            modifier = Modifier.size(34.dp)
+                                                        )
+                                                    }
+
+                                                    Spacer(Modifier.height(12.dp))
+
+                                                    Text(
+                                                        text = "반려동물 사진",
+                                                        fontSize = 14.sp,
+                                                        color = muted
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        val progress = burstProgress.value
+                                        if (progress > 0f && progress < 1f) {
                                             Icon(
                                                 imageVector = paw,
                                                 contentDescription = null,
-                                                modifier = Modifier.size(12.dp)
-                                            )
-
-                                            Spacer(Modifier.width(4.dp))
-
-                                            Text(
-                                                text = post.snackInfo,
-                                                fontSize = 11.sp
+                                                tint = tomato,
+                                                modifier = Modifier.size(100.dp).graphicsLayer {
+                                                    // 처음에는 빠르게 커지고, 좌우로 흔들린 뒤 서서히 사라집니다.
+                                                    val size = if (progress < 0.3f) {
+                                                        0.2f + (progress / 0.3f) * 1.05f
+                                                    } else {
+                                                        1.25f - ((progress - 0.3f) / 0.7f) * 0.25f
+                                                    }
+                                                    scaleX = size
+                                                    scaleY = size
+                                                    rotationZ = sin(progress * Math.PI.toFloat() * 6f) * 18f * (1f - progress)
+                                                    alpha = when {
+                                                        progress < 0.12f -> progress / 0.12f
+                                                        progress > 0.6f -> (1f - progress) / 0.4f
+                                                        else -> 1f
+                                                    }
+                                                }
                                             )
                                         }
                                     }
 
-                                    post.tags.forEachIndexed { index, tag ->
-                                        Text(
-                                            text = "#$tag",
-                                            fontSize = 11.sp,
-                                            color = if (index == 0) {
-                                                Color(0xFF934A38)
-                                            } else {
-                                                olive
-                                            },
-                                            modifier = Modifier
-                                                .background(
-                                                    color = if (index == 0) {
-                                                        Color(0xFFF7E3DC)
-                                                    } else {
-                                                        softGreen
-                                                    },
-                                                    shape = RoundedCornerShape(20.dp)
-                                                )
-                                                .padding(
-                                                    horizontal = 10.dp,
-                                                    vertical = 6.dp
-                                                )
-                                        )
+                                    // 쓰담쓰담, 댓글, 공유, 저장
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        IconToggleButton(
+                                            checked = isPetted,
+                                            onCheckedChange = {
+                                                isPetted = it
+                                                if (it) petBurst++
+                                            }
+                                        ) {
+                                            Icon(
+                                                imageVector = paw,
+                                                contentDescription = if (isPetted) "쓰담쓰담 취소" else "쓰담쓰담",
+                                                tint = pawColor,
+                                                modifier = Modifier.scale(pawScale)
+                                            )
+                                        }
+
+                                        IconButton(onClick = { showComments = true }) {
+                                            Icon(
+                                                imageVector = comment,
+                                                contentDescription = "댓글"
+                                            )
+                                        }
+
+                                        IconButton(onClick = {}) {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                                contentDescription = "공유"
+                                            )
+                                        }
+
+                                        Spacer(Modifier.weight(1f))
+
+                                        IconButton(onClick = {}) {
+                                            Icon(
+                                                imageVector = bookmark,
+                                                contentDescription = "저장"
+                                            )
+                                        }
                                     }
-                                }
 
-                                Spacer(Modifier.height(12.dp))
+                                    Text(
+                                        text = "쓰담쓰담 ${post.likes + if (isPetted) 1 else 0}회",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
 
-                                Text(
-                                    text = "댓글 ${post.comments + postComments.size}개 모두 보기",
-                                    modifier = Modifier.clickable { showComments = true }
-                                        .padding(vertical = 8.dp),
-                                    fontSize = 11.sp,
-                                    color = muted
-                                )
+                                    Spacer(Modifier.height(5.dp))
 
-                                // 등록한 댓글은 해당 게시물 카드에도 바로 표시합니다.
-                                postComments.forEach { item ->
+                                    // 게시물 본문
                                     Text(
                                         text = buildAnnotatedString {
-                                            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                                                append(item.userName)
+                                            withStyle(
+                                                SpanStyle(fontWeight = FontWeight.Bold)
+                                            ) {
+                                                append(post.userName)
                                             }
                                             append("  ")
-                                            append(item.content)
+                                            append(post.content)
                                         },
-                                        modifier = Modifier.fillMaxWidth()
-                                            .padding(vertical = 4.dp),
-                                        fontSize = 12.sp,
-                                        lineHeight = 18.sp,
-                                        color = olive
+                                        fontSize = 13.sp,
+                                        lineHeight = 19.sp
+                                    )
+
+                                    Spacer(Modifier.height(12.dp))
+
+                                    // 간식 정보와 해시태그
+                                    // 화면이 좁으면 다음 줄로 넘어갑니다.
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        if (post.snackInfo.isNotBlank()) {
+                                            Row(
+                                                modifier = Modifier
+                                                    .background(
+                                                        softGreen,
+                                                        RoundedCornerShape(20.dp)
+                                                    )
+                                                    .padding(
+                                                        horizontal = 10.dp,
+                                                        vertical = 6.dp
+                                                    ),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    imageVector = paw,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(12.dp)
+                                                )
+
+                                                Spacer(Modifier.width(4.dp))
+
+                                                Text(
+                                                    text = post.snackInfo,
+                                                    fontSize = 11.sp
+                                                )
+                                            }
+                                        }
+
+                                        post.tags.forEachIndexed { index, tag ->
+                                            Text(
+                                                text = "#$tag",
+                                                fontSize = 11.sp,
+                                                color = if (index == 0) {
+                                                    Color(0xFF934A38)
+                                                } else {
+                                                    olive
+                                                },
+                                                modifier = Modifier
+                                                    .background(
+                                                        color = if (index == 0) {
+                                                            Color(0xFFF7E3DC)
+                                                        } else {
+                                                            softGreen
+                                                        },
+                                                        shape = RoundedCornerShape(20.dp)
+                                                    )
+                                                    .padding(
+                                                        horizontal = 10.dp,
+                                                        vertical = 6.dp
+                                                    )
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(Modifier.height(12.dp))
+
+                                    Text(
+                                        text = "댓글 ${post.comments + postComments.size}개 모두 보기",
+                                        modifier = Modifier.clickable { showComments = true }
+                                            .padding(vertical = 8.dp),
+                                        fontSize = 11.sp,
+                                        color = muted
+                                    )
+
+                                    // 등록한 댓글은 해당 게시물 카드에도 바로 표시합니다.
+                                    postComments.forEach { item ->
+                                        Text(
+                                            text = buildAnnotatedString {
+                                                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                                                    append(item.userName)
+                                                }
+                                                append("  ")
+                                                append(item.content)
+                                            },
+                                            modifier = Modifier.fillMaxWidth()
+                                                .padding(vertical = 4.dp),
+                                            fontSize = 12.sp,
+                                            lineHeight = 18.sp,
+                                            color = olive
+                                        )
+                                    }
+
+                                    Spacer(Modifier.height(4.dp))
+                                }
+                            }
+
+                            Spacer(Modifier.height(16.dp))
+                        }
+                    }
+                }
+                composable("커뮤니티") {
+                    Column(
+                        modifier = Modifier.fillMaxSize().background(oatmeal)
+                            .verticalScroll(rememberScrollState())
+                            .padding(bottom = 20.dp)
+                    ) {
+                        // ===== 간식 커뮤니티 =====
+                        Column(
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Text(
+                                text = "간식 커뮤니티",
+                                fontSize = 26.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Text(
+                                text = "우리 아이가 좋아하는 간식을 나눠요",
+                                fontSize = 13.sp,
+                                color = muted
+                            )
+                            OutlinedTextField(
+                                value = snackSearch,
+                                onValueChange = { snackSearch = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = { Text("어떤 간식을 찾고 있나요?", fontSize = 13.sp) },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Search, contentDescription = null)
+                                },
+                                singleLine = true,
+                                shape = RoundedCornerShape(28.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = pistachio,
+                                    unfocusedBorderColor = pistachio,
+                                    focusedContainerColor = Color.White,
+                                    unfocusedContainerColor = Color.White,
+                                    focusedTextColor = olive,
+                                    unfocusedTextColor = olive,
+                                    focusedLeadingIconColor = olive,
+                                    unfocusedLeadingIconColor = muted,
+                                    focusedPlaceholderColor = muted,
+                                    unfocusedPlaceholderColor = muted,
+                                    cursorColor = tomato
+                                )
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf("전체", "강아지", "고양이").forEach { category ->
+                                    FilterChip(
+                                        selected = snackCategory == category,
+                                        onClick = { snackCategory = category },
+                                        label = { Text(category) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            containerColor = softGreen,
+                                            labelColor = olive,
+                                            selectedContainerColor = tomato,
+                                            selectedLabelColor = Color.White
+                                        )
                                     )
                                 }
-
-                                Spacer(Modifier.height(4.dp))
+                            }
+                            val visibleSnacks = snacks.filter { snack ->
+                                (snackCategory == "전체" || snack.petType == snackCategory) &&
+                                    (snack.name.contains(snackSearch, ignoreCase = true) ||
+                                        snack.review.contains(snackSearch, ignoreCase = true))
+                            }
+                            if (visibleSnacks.isEmpty()) {
+                                Text("검색한 간식이 없어요.", color = muted, fontSize = 14.sp)
+                            }
+                            visibleSnacks.forEach { snack ->
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(18.dp),
+                                    color = Color.White,
+                                    contentColor = olive
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        val snackImage = snack.imageRes
+                                        if (snackImage != null) {
+                                            Image(
+                                                painter = painterResource(snackImage),
+                                                contentDescription = snack.name,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.size(64.dp)
+                                                    .clip(RoundedCornerShape(14.dp))
+                                            )
+                                        } else {
+                                            Box(
+                                                modifier = Modifier.size(64.dp)
+                                                    .background(pistachio, RoundedCornerShape(14.dp)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(paw, contentDescription = "간식 사진 없음",
+                                                    modifier = Modifier.size(30.dp), tint = olive)
+                                            }
+                                        }
+                                        Column(
+                                            modifier = Modifier.weight(1f),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Text(snack.name, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.Star, contentDescription = "평점",
+                                                    tint = tomato, modifier = Modifier.size(15.dp))
+                                                Spacer(Modifier.width(4.dp))
+                                                Text("${snack.rating} · ${snack.petType}",
+                                                    fontSize = 11.sp, color = muted)
+                                            }
+                                            Text(
+                                                text = snack.review,
+                                                fontSize = 11.sp,
+                                                color = muted,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                        // 상세 화면은 이번 과제에서 구현하지 않습니다.
+                                        Icon(Icons.Default.KeyboardArrowRight, contentDescription = null,
+                                            modifier = Modifier.size(20.dp), tint = olive)
+                                    }
+                                }
                             }
                         }
 
-                        Spacer(Modifier.height(16.dp))
                     }
                 }
             }
