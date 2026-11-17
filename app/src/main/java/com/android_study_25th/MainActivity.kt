@@ -23,7 +23,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AddCircle
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Notifications
@@ -33,6 +36,8 @@ import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,12 +49,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.android_study_25th.ui.theme.Android_study_25thTheme
 
 class MainActivity : ComponentActivity() {
@@ -58,12 +69,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             Android_study_25thTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    FeedScreen(
-                        post = samplePost,
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                MainScreen()
             }
         }
     }
@@ -88,6 +94,74 @@ val samplePost = PostData(
     commentCount = 31,
     time = "1시간 전"
 )
+
+// 하단바 탭
+enum class BottomTab(val route: String, val label: String, val icon: ImageVector) {
+    HOME("home", "홈", Icons.Default.Home),
+    SEARCH("search", "탐색", Icons.Default.Search),
+    PROFILE("profile", "마이", Icons.Default.Person)
+}
+
+@Composable
+fun MainScreen() {
+    val navController = rememberNavController()
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = backStackEntry?.destination?.route
+
+    Scaffold(
+        bottomBar = {
+            NavigationBar(containerColor = Color.White) {
+                BottomTab.entries.forEach { tab ->
+                    NavigationBarItem(
+                        selected = currentRoute == tab.route,
+                        onClick = {
+                            navController.navigate(tab.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        icon = { Icon(tab.icon, contentDescription = tab.label) },
+                        label = { Text(tab.label) }
+                    )
+                }
+            }
+        }
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = BottomTab.HOME.route,
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            composable(BottomTab.HOME.route) {
+                FeedScreen(post = samplePost)
+            }
+            composable(BottomTab.SEARCH.route) {
+                SearchScreen()
+            }
+            composable(BottomTab.PROFILE.route) {
+                ProfileScreen()
+            }
+        }
+    }
+}
+
+// TODO 화면 채우기
+@Composable
+fun SearchScreen() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text("탐색 화면")
+    }
+}
+
+@Composable
+fun ProfileScreen() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text("마이 화면")
+    }
+}
 
 @Composable
 fun FeedScreen(post: PostData, modifier: Modifier = Modifier) {
@@ -210,8 +284,8 @@ fun FeedScreen(post: PostData, modifier: Modifier = Modifier) {
 
 @Preview(showBackground = true)
 @Composable
-fun FeedScreenPreview() {
+fun MainScreenPreview() {
     Android_study_25thTheme {
-        FeedScreen(post = samplePost)
+        MainScreen()
     }
 }
